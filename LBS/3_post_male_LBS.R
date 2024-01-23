@@ -15,6 +15,9 @@ setwd("H:/")
 load(file="PhD_4th_yr/Inbreeding_depression_models/LBS/male_LBS_model_output_final.RData")
 load("PhD_4th_yr/Inbreeding_depression_models/LBS/Chapter_plots/plot_dfs_male_LBS.RData") ##load in df made using loops in this script as they take ages!
 
+setwd("/Volumes/Seagate Portable Drive")
+load(file="PhD/Chapter_4_inbr_dep/male_LBS_model_output_final.RData")
+
 
 summary(male_LBS_model)
 #plot(male_LBS_model)
@@ -106,7 +109,7 @@ male_LBS_pois
 
 
 forest=(male_LBS_zi+male_LBS_pois)
-
+forest
 
 # p4 <- ggplot(data.frame(l = male_LBS_zi$labels$y, x = 1, y = 1)) +
 #   geom_text(aes(x, y, label = l), angle = 0, size=6) + 
@@ -264,7 +267,7 @@ rands_zi=as.data.frame(male_LBS_model$VCV)%>%dplyr::select(matches("traitzi"))
 #rand_var_pois=0.2632+0.05643+0.6036 ##variance estimatd for all radoms effects in pois
 #v=diag(c(rand_var_pois,rand_var_zi),2) ##assuming no covariance 
 
-ibc_qua=c(0,0.05,0.1,0.15,0.2,0.25,0.3)
+ibc_qua=c(0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1,0.15,0.2,0.3)
 LBS_transformed=list()
 
 
@@ -306,6 +309,9 @@ beep(sound=8)
 LBSsum_df=do.call(rbind.data.frame,LBS_transformed)
 colnames(LBSsum_df) <- c("LBS_mean","CI_upr","CI_lwr","ibc")
 LBSsum_df <- sapply(LBSsum_df, as.numeric)%>%as.data.frame()
+
+save(LBSsum_df,file="PhD/inbreeding_dep_manuscript/model_outputs/male_LBS_prediction_fig.RData") ##load in df made using loops in this script as they take ages!
+
 
 LBS_pred_sum=ggplot(data=LBSsum_df,aes(x=ibc,y=LBS_mean))+
   geom_line(linewidth=1)+
