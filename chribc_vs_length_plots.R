@@ -14,10 +14,26 @@ deermap <- read.csv("Rum_deer/ID_Chr_MolEcol_revised/mCerEla1.1_assembly.csv", h
   mutate(length_Mb=Seq.length/1000000)%>%
   filter(!CHR %in% c("Un","X"))
 
-
+## get sd of FROHchr 
 setwd("/Volumes/Seagate Portable Drive")
+
+birth_wt_df_sd=read.table("PhD/Chapter_4_inbr_dep/birth_wt_df.txt", sep=",", header=T)%>%
+  na.omit()%>%
+  dplyr::select(matches("FROH_chr"))
+  
+sd_birth_wt_df=apply(birth_wt_df_sd,2, sd)%>%
+  as_tibble()%>%
+  rename(SD_frohchr=value)%>%
+  rownames_to_column(var = "CHR")
+  
+birth_wt_var=read.table("PhD/Chapter_4_inbr_dep/birth_wt_df.txt", sep=",", header=T)%>%
+  na.omit()
+  
+var_bw=sqrt(sd(birth_wt_var$CaptureWt))
+
 ## Read in birth weight output ##
 load(file="PhD/inbreeding_dep_manuscript/model_outputs/birth_wt_model_output24072023.RData")
+
 
 summary_table=summary(birth_wt_model)$solutions
 summary_table
@@ -50,33 +66,48 @@ FROH_sols$CHR<-as.factor(FROH_sols$CHR)
 effect_v_size=FROH_sols%>%inner_join(deermap)%>%
   select(CHR, length_Mb, solution, CI_upper, CI_lower)
 
-
-effect_chr_bw_errors=ggplot(effect_v_size, aes(x=length_Mb, y=solution, label=CHR, ymin=CI_lower, ymax=CI_upper)) +
-  geom_pointrange() +
-  geom_smooth(method=lm, color="red") +
-  geom_text(nudge_x = 3, size=5)+
-  theme_classic()+
-  theme(text = element_text(size = 22))+
-  labs(x="Chromosome length (Mb)", y="Slope estimate", title="Birth weight", tag="A")+
-  stat_cor(method = "pearson",label.x = 110, size=6)
-
-effect_chr_bw_errors
+size_var_explained=effect_v_size%>%
+  inner_join(sd_birth_wt_df)%>%
+  mutate(var_exp=(((solution*SD_frohchr)^2)/var_bw))
+  
 
 
-effect_chr_bw_main=ggplot(effect_v_size, aes(x=length_Mb, y=solution, label=CHR)) +
+effect_chr_bw_main=ggplot(size_var_explained, aes(x=length_Mb, y=var_exp, label=CHR)) +
   geom_point() +
   geom_smooth(method=lm, color="red") +
   geom_text(nudge_x = 3, size=5)+
   theme_classic()+
-  theme(text = element_text(size = 22))+
-  labs(x="Chromosome length (Mb)", y="Slope estimate", title="Birth weight", tag="A")+
-  stat_cor(method = "pearson",label.x = 110, size=6)
+  theme(text = element_text(size = 20))+
+  labs(x="Chromosome length (Mb)", y="ID variance explained", title="Birth weight", tag="A")+
+  stat_cor(method = "pearson",size=6)
   
   effect_chr_bw_main
+  
+  # effect_chr_bw_errors=ggplot(effect_v_size, aes(x=length_Mb, y=solution, label=CHR, ymin=CI_lower, ymax=CI_upper)) +
+  #   geom_pointrange() +
+  #   geom_smooth(method=lm, color="red") +
+  #   geom_text(nudge_x = 3, size=5)+
+  #   theme_classic()+
+  #   theme(text = element_text(size = 22))+
+  #   labs(x="Chromosome length (Mb)", y="Slope estimate", title="Birth weight", tag="A")+
+  #   stat_cor(method = "pearson",label.x = 110, size=6)
+  # 
+  # effect_chr_bw_errors
 
 ######################################################################################################
 
 ## with survival ##
+  
+  
+surv_df_sd=read.table("PhD/Chapter_4_inbr_dep/AA_juvenile_survival_df.txt", sep=",", header=T)%>%
+    na.omit()%>%
+    dplyr::select(matches("FROH_chr"))
+  
+sd_surv_df=apply(surv_df_sd,2, sd)%>%
+    as_tibble()%>%
+    rename(SD_frohchr=value)%>%
+    rownames_to_column(var = "CHR")
+  
 
 load(file="PhD/inbreeding_dep_manuscript/model_outputs/A_juvenile_survival_model_output.RData")
   
@@ -116,32 +147,53 @@ load(file="PhD/inbreeding_dep_manuscript/model_outputs/A_juvenile_survival_model
     select(CHR, length_Mb, solution, CI_upper, CI_lower)
   
   
-  effect_chr_surv_errors=ggplot(effect_v_size, aes(x=length_Mb, y=solution, label=CHR, ymin=CI_lower, ymax=CI_upper)) +
-    geom_pointrange() +
-    geom_smooth(method=lm, color="red") +
-    geom_text(nudge_x = 3, size=5)+
-    theme_classic()+
-    theme(text = element_text(size = 22))+
-    labs(x="Chromosome length (Mb)", y="Slope estimate", title="Juvenile survival", tag="B")+
-    stat_cor(method = "pearson",label.x = 110, size=6)
-
-  effect_chr_surv_errors
-
-
-  effect_chr_surv_main=ggplot(effect_v_size, aes(x=length_Mb, y=solution, label=CHR)) +
+  size_var_explained=effect_v_size%>%
+    inner_join(sd_surv_df)%>%
+    mutate(var_exp=((solution*SD_frohchr)^2))
+  
+  
+  effect_chr_surv_main=ggplot(size_var_explained, aes(x=length_Mb, y=var_exp, label=CHR)) +
     geom_point() +
     geom_smooth(method=lm, color="red") +
     geom_text(nudge_x = 3, size=5)+
     theme_classic()+
     theme(text = element_text(size = 22))+
-    labs(x="Chromosome length (Mb)", y="Slope estimate", title="Juvenile survival", tag="B")+
-    stat_cor(method = "pearson",label.x = 110, size=6)
-
+    labs(x="Chromosome length (Mb)", y="ID variance explained", title="Juvenile survival", tag="B")+
+    stat_cor(method = "pearson",size=6)
+  
   effect_chr_surv_main
+  
+  
+  
+  # effect_chr_surv_errors=ggplot(effect_v_size, aes(x=length_Mb, y=solution, label=CHR, ymin=CI_lower, ymax=CI_upper)) +
+  #   geom_pointrange() +
+  #   geom_smooth(method=lm, color="red") +
+  #   geom_text(nudge_x = 3, size=5)+
+  #   theme_classic()+
+  #   theme(text = element_text(size = 22))+
+  #   labs(x="Chromosome length (Mb)", y="Slope estimate", title="Juvenile survival", tag="B")+
+  #   stat_cor(method = "pearson",label.x = 110, size=6)
+  # 
+  # effect_chr_surv_errors
+
+
+
 
   #############################################################################################################
 
   ## female LBS ##
+  
+  
+  femaleLBS_df_sd=read.table("PhD/Chapter_4_inbr_dep/female_LBS_df.txt", sep=",", header=T)%>%
+    na.omit()%>%
+    dplyr::select(matches("FROH_chr"))
+  
+  sd_femaleLBS=apply(femaleLBS_df_sd,2, sd)%>%
+    as_tibble()%>%
+    rename(SD_frohchr=value)%>%
+    rownames_to_column(var = "CHR")
+  
+  
   load(file="PhD/inbreeding_dep_manuscript/model_outputs/Female_LBS_model_output_final.RData")
   
   
@@ -198,58 +250,69 @@ load(file="PhD/inbreeding_dep_manuscript/model_outputs/A_juvenile_survival_model
   effect_v_size_hu=FROH_sols_hu%>%inner_join(deermap)%>%
     select(CHR, length_Mb,solution,CI_upper, CI_lower)
   
-zi_error=ggplot(effect_v_size_hu, aes(x=length_Mb, y=solution, label=CHR,ymin=CI_lower, ymax=CI_upper)) +
-    geom_pointrange() +
-    geom_smooth(method=lm, color="mediumseagreen") +
-    geom_text(nudge_x = 5,size=5)+
-    theme_classic()+
-    theme(text = element_text(size = 22), axis.title.x = element_text(size=12),axis.text.x = element_text(size=12))+
-    labs(x="Chromosome length (Mb)", y="Slope estimate for hurdle", tag="C", title = "Female LBS")+
-    stat_cor(method = "pearson",size=5)+
-  scale_x_continuous(breaks=seq(0, 125, 25))
-
   
+  size_var_explained_hu=effect_v_size_hu%>%
+    inner_join(sd_femaleLBS)%>%
+    mutate(var_exp=((solution*SD_frohchr)^2))
+  
+# zi_error=ggplot(effect_v_size_hu, aes(x=length_Mb, y=solution, label=CHR,ymin=CI_lower, ymax=CI_upper)) +
+#     geom_pointrange() +
+#     geom_smooth(method=lm, color="mediumseagreen") +
+#     geom_text(nudge_x = 5,size=5)+
+#     theme_classic()+
+#     theme(text = element_text(size = 22), axis.title.x = element_text(size=12),axis.text.x = element_text(size=12))+
+#     labs(x="Chromosome length (Mb)", y="Slope estimate for hurdle", tag="C", title = "Female LBS")+
+#     stat_cor(method = "pearson",size=5)+
+#   scale_x_continuous(breaks=seq(0, 125, 25))
+# 
+#   
   FROH_sols_pois$CHR<-as.factor(FROH_sols_pois$CHR)
   
   effect_v_sizepi=FROH_sols_pois%>%inner_join(deermap)%>%
     select(CHR, length_Mb,solution,CI_upper, CI_lower)
+
   
-  pi_error=ggplot(effect_v_sizepi, aes(x=length_Mb, y=solution, label=CHR,ymin=CI_lower, ymax=CI_upper)) +
-    geom_pointrange() +
-    geom_smooth(method=lm, color="chocolate3") +
-    geom_text(nudge_x = 5,size=5)+
-    theme_classic()+
-    theme(text = element_text(size = 22),  axis.title.x = element_text(size=12),axis.text.x = element_text(size=12))+
-    labs(x="Chromosome length (Mb)", y="Slope estimate for Poisson process")+
-    stat_cor(method = "pearson",size=5)+
-    scale_x_continuous(breaks=seq(0, 125, 25))
+  size_var_explained_pi=effect_v_sizepi%>%
+    inner_join(sd_femaleLBS)%>%
+    mutate(var_exp=((solution*SD_frohchr)^2))  
+  
+    # 
+  # pi_error=ggplot(effect_v_sizepi, aes(x=length_Mb, y=solution, label=CHR,ymin=CI_lower, ymax=CI_upper)) +
+  #   geom_pointrange() +
+  #   geom_smooth(method=lm, color="chocolate3") +
+  #   geom_text(nudge_x = 5,size=5)+
+  #   theme_classic()+
+  #   theme(text = element_text(size = 22),  axis.title.x = element_text(size=12),axis.text.x = element_text(size=12))+
+  #   labs(x="Chromosome length (Mb)", y="Slope estimate for Poisson process")+
+  #   stat_cor(method = "pearson",size=5)+
+  #   scale_x_continuous(breaks=seq(0, 125, 25))
+  # 
+  # 
+  # 
+  # eff_v_chr_female_LBS_error=zi_error+pi_error
+  # eff_v_chr_female_LBS_error
   
   
-  
-  eff_v_chr_female_LBS_error=zi_error+pi_error
-  eff_v_chr_female_LBS_error
-  
-  
-  zi=ggplot(effect_v_size_hu, aes(x=length_Mb, y=solution, label=CHR)) +
+  zi=ggplot(size_var_explained_hu, aes(x=length_Mb, y=var_exp, label=CHR)) +
     geom_point() +
     geom_smooth(method=lm, color="mediumseagreen") +
     geom_text(nudge_x = 5,size=5)+
     theme_classic()+
     theme(text = element_text(size = 22), axis.title.x = element_text(size=12),axis.text.x = element_text(size=12))+
-    labs(x="Chromosome length (Mb)", y="Slope estimate for hurdle", tag="C", title = "Female LBS")+
-    stat_cor(method = "pearson",size=5)+
+    labs(x="Chromosome length (Mb)", y="ID variance explained hurdle", tag="C", title = "Female LBS")+
+    stat_cor(method = "pearson",size=5, label.y = 165)+
     scale_x_continuous(breaks=seq(0, 125, 25))
   
   
   
-  pi=ggplot(effect_v_sizepi, aes(x=length_Mb, y=solution, label=CHR)) +
+  pi=ggplot(size_var_explained_pi, aes(x=length_Mb, y=var_exp, label=CHR)) +
     geom_point() +
     geom_smooth(method=lm, color="chocolate3") +
     geom_text(nudge_x = 5,size=5)+
     theme_classic()+
     theme(text = element_text(size = 22),  axis.title.x = element_text(size=12),axis.text.x = element_text(size=12))+
-    labs(x="Chromosome length (Mb)", y="Slope estimate for Poisson process")+
-    stat_cor(method = "pearson",size=5) +
+    labs(x="Chromosome length (Mb)", y="ID variance explained Poisson")+
+    stat_cor(method = "pearson",size=5, label.y = 0.5) +
     scale_x_continuous(breaks=seq(0, 125, 25))
   
 
@@ -260,6 +323,16 @@ zi_error=ggplot(effect_v_size_hu, aes(x=length_Mb, y=solution, label=CHR,ymin=CI
 
 #############################################################################################################
   
+  
+  
+  maleLBS_df_sd=read.table("PhD/Chapter_4_inbr_dep/Male_LBS_df.txt", sep=",", header=T)%>%
+    na.omit()%>%
+    dplyr::select(matches("FROH_chr"))
+  
+  sd_maleLBS=apply(maleLBS_df_sd,2, sd)%>%
+    as_tibble()%>%
+    rename(SD_frohchr=value)%>%
+    rownames_to_column(var = "CHR")
   
   setwd("/Volumes/Seagate Portable Drive")
   load(file="PhD/Chapter_4_inbr_dep/male_LBS_model_output_final.RData")
@@ -315,58 +388,69 @@ zi_error=ggplot(effect_v_size_hu, aes(x=length_Mb, y=solution, label=CHR,ymin=CI
   effect_v_size_zi=FROH_sols_zi%>%inner_join(deermap)%>%
     select(CHR, length_Mb,solution,CI_upper, CI_lower)
   
-  zi_error_m=ggplot(effect_v_size_zi, aes(x=length_Mb, y=solution, label=CHR,ymin=CI_lower, ymax=CI_upper)) +
-    geom_pointrange() +
-    geom_smooth(method=lm, color="mediumseagreen") +
-    geom_text(nudge_x = 5,size=5)+
-    theme_classic()+
-    theme(text = element_text(size = 22), axis.title.x = element_text(size=12),axis.text.x = element_text(size=12))+
-    labs(x="Chromosome length (Mb)", y="Slope estimate for zero inflation", tag="D", title = "Male LBS")+
-    stat_cor(method = "pearson",size=5)+
-    scale_x_continuous(breaks=seq(0, 125, 25))
-  
-  
+  # zi_error_m=ggplot(effect_v_size_zi, aes(x=length_Mb, y=solution, label=CHR,ymin=CI_lower, ymax=CI_upper)) +
+  #   geom_pointrange() +
+  #   geom_smooth(method=lm, color="mediumseagreen") +
+  #   geom_text(nudge_x = 5,size=5)+
+  #   theme_classic()+
+  #   theme(text = element_text(size = 22), axis.title.x = element_text(size=12),axis.text.x = element_text(size=12))+
+  #   labs(x="Chromosome length (Mb)", y="Slope estimate for zero inflation", tag="D", title = "Male LBS")+
+  #   stat_cor(method = "pearson",size=5)+
+  #   scale_x_continuous(breaks=seq(0, 125, 25))
+  # 
+  # 
   FROH_sols_pois$CHR<-as.factor(FROH_sols_pois$CHR)
-  
+  # 
   effect_v_sizepi_m=FROH_sols_pois%>%inner_join(deermap)%>%
     select(CHR, length_Mb,solution,CI_upper, CI_lower)
+  # 
+  # pi_error_m=ggplot(effect_v_sizepi_m, aes(x=length_Mb, y=solution, label=CHR,ymin=CI_lower, ymax=CI_upper)) +
+  #   geom_pointrange() +
+  #   geom_smooth(method=lm, color="chocolate3") +
+  #   geom_text(nudge_x = 5,size=5)+
+  #   theme_classic()+
+  #   theme(text = element_text(size = 22),  axis.title.x = element_text(size=12),axis.text.x = element_text(size=12))+
+  #   labs(x="Chromosome length (Mb)", y="Slope estimate for Poisson process")+
+  #   stat_cor(method = "pearson",size=5)+
+  #   scale_x_continuous(breaks=seq(0, 125, 25))
+  # 
+  # 
   
-  pi_error_m=ggplot(effect_v_sizepi_m, aes(x=length_Mb, y=solution, label=CHR,ymin=CI_lower, ymax=CI_upper)) +
-    geom_pointrange() +
-    geom_smooth(method=lm, color="chocolate3") +
-    geom_text(nudge_x = 5,size=5)+
-    theme_classic()+
-    theme(text = element_text(size = 22),  axis.title.x = element_text(size=12),axis.text.x = element_text(size=12))+
-    labs(x="Chromosome length (Mb)", y="Slope estimate for Poisson process")+
-    stat_cor(method = "pearson",size=5)+
-    scale_x_continuous(breaks=seq(0, 125, 25))
+  # eff_v_chr_male_LBS_error=zi_error_m+pi_error_m
+  # eff_v_chr_male_LBS_error
+ 
   
   
+  size_var_explained_zi=effect_v_size_zi%>%
+    inner_join(sd_maleLBS)%>%
+    mutate(var_exp=((solution*SD_frohchr)^2))
   
-  eff_v_chr_male_LBS_error=zi_error_m+pi_error_m
-  eff_v_chr_male_LBS_error
   
-  
-  zi_m=ggplot(effect_v_size_zi, aes(x=length_Mb, y=solution, label=CHR)) +
+  zi_m=ggplot(size_var_explained_zi, aes(x=length_Mb, y=var_exp, label=CHR)) +
     geom_point() +
     geom_smooth(method=lm, color="mediumseagreen") +
     geom_text(nudge_x = 5,size=5)+
     theme_classic()+
     theme(text = element_text(size = 22), axis.title.x = element_text(size=12),axis.text.x = element_text(size=12))+
     labs(x="Chromosome length (Mb)", y="Slope estimate for zero inflation", tag="D", title = "Male LBS")+
-    stat_cor(method = "pearson",size=5)+
+    stat_cor(method = "pearson",size=5, label.y = 150)+
     scale_x_continuous(breaks=seq(0, 125, 25))
   
   
   
-  pi_m=ggplot(effect_v_sizepi_m, aes(x=length_Mb, y=solution, label=CHR)) +
+  size_var_explained_pi=effect_v_sizepi%>%
+    inner_join(sd_maleLBS)%>%
+    mutate(var_exp=((solution*SD_frohchr)^2))
+  
+  
+  pi_m=ggplot(size_var_explained_pi, aes(x=length_Mb, y=var_exp, label=CHR)) +
     geom_point() +
     geom_smooth(method=lm, color="chocolate3") +
     geom_text(nudge_x = 5,size=5)+
     theme_classic()+
     theme(text = element_text(size = 22),  axis.title.x = element_text(size=12), axis.text.x = element_text(size=12))+
     labs(x="Chromosome length (Mb)", y="Slope estimate for Poisson process")+
-    stat_cor(method = "pearson",size=5) +
+    stat_cor(method = "pearson",size=5, label.y = 0.6) +
     scale_x_continuous(breaks=seq(0, 125, 25))
   
   
@@ -384,24 +468,24 @@ main_fig
 
 
 
-bottom_supp=zi_error+pi_error+zi_error_m+pi_error_m+plot_layout(nrow=1)
-bottom_supp
-
-supp_fig=(effect_chr_bw_errors+effect_chr_surv_errors)/bottom_supp+plot_layout(nrow=2)
-supp_fig
+# bottom_supp=zi_error+pi_error+zi_error_m+pi_error_m+plot_layout(nrow=1)
+# bottom_supp
+# 
+# supp_fig=(effect_chr_bw_errors+effect_chr_surv_errors)/bottom_supp+plot_layout(nrow=2)
+# supp_fig
 
 
 setwd("/Users/ahewett1/Documents")
 
 ggsave(main_fig,
-       file = "Rum_deer/ID_Chr_MolEcol_revised/chr_size_slop_main_fig.png",
+       file = "Rum_deer/ID_Chr_MolEcol_revised/chr_size_slope_main_fig.png",
        width = 16,
        height = 13)
 
-ggsave(supp_fig,
-       file = "Rum_deer/ID_Chr_MolEcol_revised/SUPP_chr_size_slop_fig_errors.png",
-       width = 16,
-       height = 13)
+# ggsave(supp_fig,
+#        file = "Rum_deer/ID_Chr_MolEcol_revised/SUPP_chr_size_slop_fig_errors.png",
+#        width = 16,
+#        height = 13)
 
 
 #############################################################################################################

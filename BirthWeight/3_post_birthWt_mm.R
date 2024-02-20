@@ -5,6 +5,10 @@ library(ggpubr)
 setwd("H:/")
 load(file="PhD_4th_yr/Inbreeding_depression_models/birth_weight/birth_wt_model_output24072023.RData")
 
+setwd("/Volumes/Seagate Portable Drive")
+load(file="PhD/inbreeding_dep_manuscript/model_outputs/birth_wt_model_output24072023.RData")
+
+
 birth_wt_df=read.table("PhD_4th_yr/Inbreeding_depression_models/birth_weight/birth_wt_df.txt", sep=",", header=T)
 birth_wt_df_na_rm=birth_wt_df%>%
   na.omit()
@@ -247,25 +251,26 @@ Bw_3in1
 
 
 ## check if effect size is correlted with chr size 
-deermap <- read.csv("PhD_3rdYR/Data_files/Genome_assembly_mCerEla1.1.csv", header = T, stringsAsFactors = F)%>%
+deermap <- read.csv("PhD/inbreeding_dep_manuscript/Genome_assembly_mCerEla1.1.csv", header = T, stringsAsFactors = F)%>%
   filter(!CHR %in% c("All","All_auto","X","unplaced"))
 
 
 effect_v_size=FROH_sols%>%inner_join(deermap)%>%
-  select(CHR, length_Mb,solution)
+  select(CHR, length_Mb,solution, CI_upper, CI_lower)
 
 effect_v_size$CHR=as.factor(effect_v_size$CHR)
 
-effect_chr=ggplot(effect_v_size, aes(x=length_Mb, y=solution, label=CHR)) +
-  geom_point() +
+effect_chr_bw=ggplot(effect_v_size, aes(x=length_Mb, y=solution, label=CHR, ymin=CI_lower, ymax=CI_upper)) +
+  geom_pointrange() +
   geom_smooth(method=lm, color="red") +
-  geom_text(nudge_x = 3)+
+  geom_text(nudge_y = 0.02)+
   theme_classic()+
   theme(text = element_text(size = 18))+
   labs(x="Chromosome length (Mb)", y="Slope estimate")+
   stat_cor(method = "pearson",label.x = 110)
 
-effect_chr
+
+effect_chr_bw
 
 cor(effect_v_size$length_Mb, effect_v_size$solution)
 
