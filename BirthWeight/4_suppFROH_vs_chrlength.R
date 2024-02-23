@@ -11,27 +11,30 @@ deermap <- read.csv("Rum_deer/ID_Chr_MolEcol_revised/mCerEla1.1_assembly.csv", h
   filter(!CHR %in% c("Un","X"))
 
 
-load("Rum_deer/ID_Chr_MolEcol_revised/ROH_ONLY_model_outputs/birth_wt_model_output_ROH_ONLY.RData")
 
+setwd("/Volumes/Seagate Portable Drive")
+load(file="PhD/inbreeding_dep_manuscript/model_outputs/birth_wt_model_output24072023.RData")
+
+birth_wt_df=read.table("PhD/Chapter_4_inbr_dep/birth_wt_df.txt", sep=",", header=T)
+birth_wt_df_na_rm=birth_wt_df%>%
+  na.omit()
 var_bw=(var(birth_wt_df_na_rm$CaptureWt))
 
 
 sd_bw=birth_wt_df_na_rm%>%
-  select(c(47:79))%>% ## getting only the ROH per chromosome 
+  select(c(11:43))%>% ## getting only the ROH per chromosome 
   apply(2, sd)%>%
   as_tibble()%>%
   rename(SD_frohchr=value)%>%
   rownames_to_column(var = "CHR")
 
-cov=birth_wt_df_na_rm%>%
-  select(c(47:79), 81)%>%
-  cov()
+summary(birth_wt_model)
 
-ROH_sum_sol=summary(birth_wt_model_ROHONLY)$solutions[11,1]
+ROH_sum_sol=summary(birth_wt_model)$solutions[11,1]
 
-rands=as.data.frame(birth_wt_model_ROHONLY$VCV)
+rands=as.data.frame(birth_wt_model$VCV)
 
-sols_full<-as.data.frame(birth_wt_model_ROHONLY$Sol)%>%select(matches("ROH_"))
+sols_full<-as.data.frame(birth_wt_model$Sol)%>%select(matches("FROH_"))
 
 names <- sols_full %>% names ## gets names of all random variables, 2 = all down row
 sols<-apply(sols_full,2,mean)#gets mean of all solutions i.e. the effect size of random effects 
@@ -59,7 +62,7 @@ effect_chr_bw_main=ggplot(size_var_explained, aes(x=log(length_Mb), y=log(var_ex
   geom_text(size=7, color = "white")+
   theme_classic()+
   theme(text = element_text(size = 20))+
-  labs(x="Log(Chromosome length (Mb))", y="Log(Variance explained by ROHs)", title="Birth weight", tag="A")+
+  labs(x="Log(Chromosome length (Mb))", y="Log(Variance explained by FROH)", title="Birth weight", tag="A")+
   stat_cor(method = "pearson",size=6,label.y.npc = 0.05, label.x.npc = 0.6)
 
 effect_chr_bw_main
